@@ -4,24 +4,38 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Form\UserType;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 class UserController extends AbstractController
 {
+    private ManagerRegistry $doctrine;
+    private UserPasswordHasherInterface $userPasswordHasher;
+
+    public function __construct(ManagerRegistry $doctrine, UserPasswordHasherInterface $userPasswordHasher)
+    {
+        $this->userPasswordHasher = $userPasswordHasher;
+        $this->doctrine = $doctrine;
+    }
+
     /**
      * @Route("/users", name="user_list")
      */
-    public function listAction()
+    public function listUser(ManagerRegistry $doctrine)
     {
-        return $this->render('user/list.html.twig', ['users' => $this->getDoctrine()->getRepository('AppBundle:User')->findAll()]);
+        return $this->render(
+            'user/list.html.twig',
+            ['users' => $this->doctrine->getRepository(User::class)->findAll()]
+        );
     }
 
     /**
      * @Route("/users/create", name="user_create")
      */
-    public function createAction(Request $request)
+    public function createUser(Request $request)
     {
         $user = new User();
         $form = $this->createForm(UserType::class, $user);
@@ -29,9 +43,8 @@ class UserController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $password = $this->get('security.password_encoder')->encodePassword($user, $user->getPassword());
-            $user->setPassword($password);
+            $em = $this->doctrine->getManager();
+            $user->setPassword($this->userPasswordHasher->hashPassword($user, $user->getPassword()));
 
             $em->persist($user);
             $em->flush();
@@ -47,7 +60,7 @@ class UserController extends AbstractController
     /**
      * @Route("/users/{id}/edit", name="user_edit")
      */
-    public function editAction(User $user, Request $request)
+    public function editUser(User $user, Request $request)
     {
         $form = $this->createForm(UserType::class, $user);
 
