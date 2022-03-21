@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Service\Referer;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,10 +23,12 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
     public const LOGIN_ROUTE = 'app_login';
 
     private UrlGeneratorInterface $urlGenerator;
+    private Referer $referer;
 
-    public function __construct(UrlGeneratorInterface $urlGenerator)
+    public function __construct(UrlGeneratorInterface $urlGenerator, Referer $referer)
     {
         $this->urlGenerator = $urlGenerator;
+        $this->referer = $referer;
     }
 
     public function authenticate(Request $request): Passport
@@ -49,9 +52,7 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
             return new RedirectResponse($targetPath);
         }
 
-        // For example:
-        //return new RedirectResponse($this->urlGenerator->generate('some_route'));
-        throw new \Exception('TODO: provide a valid redirect inside '.__FILE__);
+        return $this->referer->goTo();
     }
 
     protected function getLoginUrl(Request $request): string
